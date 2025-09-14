@@ -3,7 +3,7 @@ setlocal
 
 echo.
 echo ===================================
-echo  Git Push Helper (Robust Version)
+echo  Git Push Helper -> (main)
 echo ===================================
 echo.
 
@@ -41,14 +41,12 @@ if %ERRORLEVEL% neq 0 (
 )
 
 echo.
-echo Pushing to remote repository...
+echo Pushing to remote 'main' branch...
 
 :: --- THE FIX IS HERE ---
-:: Get the current branch name (e.g., "master" or "main")
-for /f %%i in ('git rev-parse --abbrev-ref HEAD') do set "BRANCH_NAME=%%i"
-
-:: Use --set-upstream. This works for the first push and all subsequent pushes.
-git push --set-upstream origin %BRANCH_NAME%
+:: This command now pushes directly to the 'main' branch and sets it as the default.
+:: It works for the first push and all subsequent pushes.
+git push --set-upstream origin main
 
 if %ERRORLEVEL% neq 0 (
     echo ERROR: 'git push' failed. You may need to 'git pull' first or check your connection/credentials.
