@@ -9,6 +9,8 @@ import os
 import sys
 import json
 import platform
+import zipfile
+import io
 
 # Import winsound for audio playback on Windows
 if platform.system() == "Windows":
@@ -19,7 +21,6 @@ from settings_ui import SettingsFrame
 APP_VERSION = "1.0.0"
 CONFIG_FILE = "config.json"
 
-# --- THE FIX IS HERE: Added a data structure for bike names and IDs ---
 BIKE_DATA = [
     ("YAMI YZ-F 250", "Y250"),
     ("YAMI YZ-F 450", "Y450"),
@@ -55,7 +56,6 @@ class SoundCreatorFrame(ttk.Frame):
         self.idle_wav_var = tk.StringVar()
         self.low_wav_var = tk.StringVar()
         self.high_wav_var = tk.StringVar()
-        self.preview_image_var = tk.StringVar()
         self.output_mode_var = tk.StringVar(value="new")
         self.bike_vars = {}
         self.bike_images = {}
@@ -115,11 +115,7 @@ class SoundCreatorFrame(ttk.Frame):
         self.create_sound_input_row(sounds_frame, "Low:", self.low_wav_var, self.low_status_var)
         self.create_sound_input_row(sounds_frame, "High:", self.high_wav_var, self.high_status_var)
 
-        preview_frame = ttk.Labelframe(left_scrolled_frame, text="2. Optional Preview", padding=15)
-        preview_frame.pack(fill=X, pady=(0, 10))
-        self.create_file_input_row(preview_frame, "Image:", self.preview_image_var, 0, file_types=[("Image", "*.jpg *.png")])
-
-        output_frame = ttk.Labelframe(left_scrolled_frame, text="3. Output Location", padding=15)
+        output_frame = ttk.Labelframe(left_scrolled_frame, text="2. Output Location", padding=15)
         output_frame.pack(fill=X, pady=(0, 10))
         output_frame.grid_columnconfigure(1, weight=1)
         ttk.Label(output_frame, text="Library:").grid(row=0, column=0, sticky=tk.W, pady=(0, 5))
@@ -147,7 +143,7 @@ class SoundCreatorFrame(ttk.Frame):
         log_header.pack(fill=X)
         self.log_output_text = ScrolledText(log_container, wrap=tk.WORD, autohide=True, height=5, padding=10)
         
-        self.bikes_container_frame = ttk.Labelframe(main_pane, text="4. Bikes to Include", padding=(15, 5, 15, 15))
+        self.bikes_container_frame = ttk.Labelframe(main_pane, text="3. Bikes to Include", padding=(15, 5, 15, 15))
         main_pane.add(self.bikes_container_frame, weight=2)
         self.populate_bikes_frame()
 
@@ -263,10 +259,13 @@ class SoundCreatorFrame(ttk.Frame):
         
         thumb_path = self.controller.get_thumbnail_path()
         cols = 5
-        # --- THE FIX IS HERE: Iterate through BIKE_DATA to get both name and ID ---
+        
+        style = ttk.Style()
+        style.configure("Toolbutton", justify=tk.CENTER)
+
         for i, (bike_name, bike_id) in enumerate(BIKE_DATA):
             var = tk.BooleanVar()
-            self.bike_vars[bike_id] = var # Use the ID as the key
+            self.bike_vars[bike_id] = var 
             img_path = os.path.join(thumb_path, f"{bike_id}.png") if thumb_path else ""
             image_to_display = None
             if os.path.exists(img_path):
@@ -278,8 +277,7 @@ class SoundCreatorFrame(ttk.Frame):
                 except Exception: image_to_display = self._get_placeholder_image((80, 50), "Error")
             else: image_to_display = self._get_placeholder_image((80, 50), "No Preview")
             
-            # Format the text to show the full name and the ID
-            button_text = f"{bike_name}\n({bike_id})"
+            button_text = f"{bike_name}\n{bike_id}"
             
             cb = ttk.Checkbutton(bikes_scrolled_frame, image=image_to_display, text=button_text, variable=var, compound=tk.TOP, bootstyle="primary-toolbutton")
             cb.grid(row=i//cols, column=i%cols, padx=5, pady=5)
@@ -341,12 +339,121 @@ class SoundCreatorFrame(ttk.Frame):
         self.log_is_visible.set(True)
         self.toggle_log()
         self.log("\n--- Starting Mod Creation Process ---")
-        selected_bikes = [name for name, var in self.bike_vars.items() if var.get()]
+
+        # 1. Validation and Data Gathering
+        lib_name = self.library_selector.get()
+        if not lib_name:
+            self.log("ERROR: No output library selected.")
+            messagebox.showerror("Validation Error", "Please select an output library from the dropdown.")
+            return
+
+        full_lib_path = self.controller.get_full_library_path(lib_name)
+        if not full_lib_path:
+            self.log(f"ERROR: Could not resolve full path for library '{lib_name}'.")
+            messagebox.showerror("Error", f"Could not find the folder for library '{lib_name}'.")
+            return
+
+        mod_name = ""
+        if self.output_mode_var.get() == "new":
+            mod_name = self.new_mod_name_entry.get().strip()
+        else:
+            mod_name = self.existing_mod_selector.get()
+        
+        if not mod_name:
+            self.log("ERROR: Mod Name is empty.")
+            messagebox.showerror("Validation Error", "Mod Name cannot be empty.")
+            return
+
+        sound_paths = {
+            "engine": self.engine_wav_var.get(),
+            "idle": self.idle_wav_var.get(),
+            "low": self.low_wav_var.get(),
+            "high": self.high_wav_var.get()
+        }
+
+        if not all(sound_paths.values()):
+            self.log("ERROR: One or more .wav files are missing.")
+            messagebox.showerror("Validation Error", "Please select all four required sound files (Engine, Idle, Low, High).")
+            return
+
+        selected_bikes = [bike_id for bike_id, var in self.bike_vars.items() if var.get()]
         if not selected_bikes:
             self.log("ERROR: No bikes were selected!")
+            messagebox.showerror("Validation Error", "Please select at least one bike to include in the mod package.")
             return
+
         self.log(f"Bikes to include: {', '.join(selected_bikes)}")
-        self.log("ERROR: Packaging logic has not been implemented yet.")
+
+        # 2. Create the main mod directory
+        mod_path = os.path.join(full_lib_path, mod_name)
+        try:
+            os.makedirs(mod_path, exist_ok=True)
+            self.log(f"Output directory: {mod_path}")
+        except OSError as e:
+            self.log(f"ERROR: Failed to create mod directory at '{mod_path}'. Reason: {e}")
+            messagebox.showerror("File System Error", f"Could not create the mod directory.\n\nError: {e}")
+            return
+
+        # 3. Iterate through each selected bike and create zip files
+        thumb_path_base = self.controller.get_thumbnail_path()
+        has_errors = False
+        for bike_id in selected_bikes:
+            self.log(f"  - Packaging bike: {bike_id}")
+            zip_path = os.path.join(mod_path, f"{bike_id}.zip")
+
+            try:
+                with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                    # Add sound files
+                    for sound_name, sound_path in sound_paths.items():
+                        arcname = f"{bike_id}/{os.path.basename(sound_path)}"
+                        zipf.write(sound_path, arcname)
+                    
+                    self.log(f"    - Added 4 sound files to {os.path.basename(zip_path)}")
+
+                    # Handle and add the preview image
+                    if not thumb_path_base:
+                        self.log(f"    - WARNING: Thumbnail folder not set in Settings. Skipping preview.jpg.")
+                        continue
+
+                    source_img_path = os.path.join(thumb_path_base, f"{bike_id}.png")
+                    if os.path.exists(source_img_path):
+                        try:
+                            with Image.open(source_img_path) as img:
+                                # Convert to RGB, as JPEG doesn't support RGBA (with transparency)
+                                rgb_img = img.convert('RGB')
+                                
+                                # Save to an in-memory byte stream
+                                img_byte_arr = io.BytesIO()
+                                rgb_img.save(img_byte_arr, format='JPEG', quality=90)
+                                img_byte_arr.seek(0) # Rewind the stream to the beginning
+                                
+                                # Write the byte stream to the zip file
+                                zipf.writestr(f"{bike_id}/preview.jpg", img_byte_arr.read())
+                                self.log(f"    - Added preview.jpg for {bike_id}")
+                        except Exception as img_e:
+                            self.log(f"    - ERROR: Failed to process image for {bike_id}. Reason: {img_e}")
+                            has_errors = True
+                    else:
+                        self.log(f"    - WARNING: Thumbnail for {bike_id} not found at {source_img_path}. Skipping preview.jpg.")
+                
+                self.log(f"    - Successfully created {os.path.basename(zip_path)}")
+
+            except Exception as e:
+                self.log(f"    - FATAL ERROR creating zip for {bike_id}: {e}")
+                messagebox.showerror("Packaging Error", f"Failed to create package for {bike_id}.\n\nError: {e}")
+                has_errors = True
+                break # Stop the process if a fatal zip error occurs
+
+        # 4. Final summary
+        if has_errors:
+            self.log("\n--- Mod Creation Finished with Errors ---")
+            messagebox.showwarning("Process Finished", f"Mod '{mod_name}' was processed, but some errors occurred. Please check the log for details.")
+        else:
+            self.log("\n--- Mod Creation Complete! ---")
+            messagebox.showinfo("Success", f"Mod '{mod_name}' created successfully in library '{lib_name}'.")
+
+        # 5. Refresh the mod list in the UI
+        self.controller.scan_all_libraries()
 
     def log(self, msg):
         self.log_output_text.text.config(state='normal')
