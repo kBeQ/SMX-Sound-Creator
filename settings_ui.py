@@ -94,3 +94,4 @@ class SettingsFrame(ttk.Frame):
         if folder:
             self.thumbnail_path_var.set(folder)
             self.controller.set_thumbnail_path(folder)
+            self.controller.save_config()

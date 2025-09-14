@@ -1,2 +1,4 @@
 ttkbootstrap
 Pillow
+tkinterdnd2
+pyinstaller
