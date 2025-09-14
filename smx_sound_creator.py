@@ -8,7 +8,7 @@ from PIL import Image, ImageTk, ImageDraw, ImageFont
 import os
 import sys
 import json
-from tkinterdnd2 import DND_FILES, TkinterDnD
+# No longer need tkinterdnd2
 
 from settings_ui import SettingsFrame
 
@@ -63,23 +63,20 @@ class SoundCreatorFrame(ttk.Frame):
         sounds_frame = ttk.Labelframe(left_scrolled_frame, text="1. Sound Files (.wav)", padding=15)
         sounds_frame.pack(fill=X, pady=(0, 10))
 
-        # --- THE FIX IS HERE: Changed relief to "solid" and borderwidth to 1 ---
-        self.drop_target = ttk.Label(
-            sounds_frame, text="\nDrop engine, idle, low, and high .wav files here\n",
-            bootstyle="inverse-secondary", anchor=CENTER, relief="solid", borderwidth=1
-        )
-        self.drop_target.pack(fill=X, pady=5)
-        self.drop_target.drop_target_register(DND_FILES)
-        self.drop_target.dnd_bind('<<DND_Enter>>', self._on_dnd_enter)
-        self.drop_target.dnd_bind('<<DND_Leave>>', self._on_dnd_leave)
-        self.drop_target.dnd_bind('<<DND_Drop>>', self._on_dnd_drop)
-        
-        status_frame = ttk.Frame(sounds_frame)
-        status_frame.pack(fill=X, pady=(10, 5))
-        self.create_status_row(status_frame, "engine.wav:", self.engine_status_var, 0)
-        self.create_status_row(status_frame, "idle.wav:", self.idle_status_var, 1)
-        self.create_status_row(status_frame, "low.wav:", self.low_status_var, 2)
-        self.create_status_row(status_frame, "high.wav:", self.high_status_var, 3)
+        # --- THE FIX IS HERE: Both folder selection AND individual file selection ---
+        ttk.Button(
+            sounds_frame, 
+            text="Select Folder with Sounds...", 
+            command=self.browse_for_sound_folder, 
+            bootstyle="primary"
+        ).pack(fill=X, ipady=5, pady=(0, 10))
+
+        ttk.Separator(sounds_frame).pack(fill=X, pady=5)
+
+        self.create_sound_input_row(sounds_frame, "Engine:", self.engine_wav_var, self.engine_status_var)
+        self.create_sound_input_row(sounds_frame, "Idle:", self.idle_wav_var, self.idle_status_var)
+        self.create_sound_input_row(sounds_frame, "Low:", self.low_wav_var, self.low_status_var)
+        self.create_sound_input_row(sounds_frame, "High:", self.high_wav_var, self.high_status_var)
 
         preview_frame = ttk.Labelframe(left_scrolled_frame, text="2. Optional Preview", padding=15)
         preview_frame.pack(fill=X, pady=(0, 10))
@@ -88,20 +85,20 @@ class SoundCreatorFrame(ttk.Frame):
         output_frame = ttk.Labelframe(left_scrolled_frame, text="3. Output Location", padding=15)
         output_frame.pack(fill=X, pady=(0, 10))
         output_frame.grid_columnconfigure(1, weight=1)
-        ttk.Label(output_frame, text="Library:").grid(row=0, column=0, sticky=W, pady=(0, 5))
+        ttk.Label(output_frame, text="Library:").grid(row=0, column=0, sticky=tk.W, pady=(0, 5))
         self.library_selector = ttk.Combobox(output_frame, state="readonly")
-        self.library_selector.grid(row=0, column=1, sticky=EW, padx=5)
+        self.library_selector.grid(row=0, column=1, sticky='ew', padx=5)
         self.library_selector.bind("<<ComboboxSelected>>", self._on_library_select)
         ttk.Separator(output_frame).grid(row=1, column=0, columnspan=2, sticky='ew', pady=10)
         mode_frame = ttk.Frame(output_frame)
         mode_frame.grid(row=2, column=0, columnspan=2, sticky='w')
-        ttk.Radiobutton(mode_frame, text="New Mod", var=self.output_mode_var, value="new", command=self._on_output_mode_change).pack(side=LEFT)
-        ttk.Radiobutton(mode_frame, text="Existing Mod", var=self.output_mode_var, value="existing", command=self._on_output_mode_change).pack(side=LEFT, padx=10)
-        ttk.Label(output_frame, text="Mod Name:").grid(row=3, column=0, sticky=W, pady=2)
+        ttk.Radiobutton(mode_frame, text="New Mod", var=self.output_mode_var, value="new", command=self._on_output_mode_change).pack(side=tk.LEFT)
+        ttk.Radiobutton(mode_frame, text="Existing Mod", var=self.output_mode_var, value="existing", command=self._on_output_mode_change).pack(side=tk.LEFT, padx=10)
+        ttk.Label(output_frame, text="Mod Name:").grid(row=3, column=0, sticky=tk.W, pady=2)
         self.new_mod_name_entry = ttk.Entry(output_frame)
-        self.new_mod_name_entry.grid(row=3, column=1, sticky=EW, padx=5)
+        self.new_mod_name_entry.grid(row=3, column=1, sticky='ew', padx=5)
         self.existing_mod_selector = ttk.Combobox(output_frame, state="readonly")
-        self.existing_mod_selector.grid(row=3, column=1, sticky=EW, padx=5)
+        self.existing_mod_selector.grid(row=3, column=1, sticky='ew', padx=5)
 
         self.create_button = ttk.Button(left_scrolled_frame, text="Create Sound Mod Package", command=self.create_mod_package)
         self.create_button.pack(fill=X, pady=10, ipady=10)
@@ -121,34 +118,55 @@ class SoundCreatorFrame(ttk.Frame):
         if self.log_is_visible.get(): self.log_output_text.pack(fill=BOTH, expand=True, pady=(5,0))
         else: self.log_output_text.pack_forget()
 
-    def _on_dnd_enter(self, event):
-        self.drop_target.config(bootstyle="inverse-primary", text="\nDrop Files Now\n")
-    def _on_dnd_leave(self, event):
-        self.drop_target.config(bootstyle="inverse-secondary", text="\nDrop engine, idle, low, and high .wav files here\n")
-    def _on_dnd_drop(self, event):
-        self._on_dnd_leave(event)
-        filepaths = self.winfo_toplevel().tk.splitlist(event.data)
-        self.log("Processing dropped files...")
-        found_map = {"engine": False, "idle": False, "low": False, "high": False}
-        for path in filepaths:
-            filename = os.path.basename(path).lower()
-            if not filename.endswith('.wav'):
-                self.log(f"  - Ignoring non-wav file: {filename}"); continue
-            if "engine.wav" in filename: self.engine_wav_var.set(path); found_map["engine"] = True
-            elif "idle.wav" in filename: self.idle_wav_var.set(path); found_map["idle"] = True
-            elif "low.wav" in filename: self.low_wav_var.set(path); found_map["low"] = True
-            elif "high.wav" in filename: self.high_wav_var.set(path); found_map["high"] = True
-            else: self.log(f"  - Ignoring unrecognized .wav: {filename}")
-        self.engine_status_var.set("✔️" if found_map["engine"] else "❌")
-        self.idle_status_var.set("✔️" if found_map["idle"] else "❌")
-        self.low_status_var.set("✔️" if found_map["low"] else "❌")
-        self.high_status_var.set("✔️" if found_map["high"] else "❌")
-        self.log("...Done.")
+    def browse_for_sound_folder(self):
+        folder_path = filedialog.askdirectory(title="Select Folder Containing Sound Files")
+        if not folder_path: return
 
-    def create_status_row(self, parent, label_text, status_var, row):
-        parent.grid_columnconfigure(0, weight=1)
-        ttk.Label(parent, text=label_text).grid(row=row, column=0, sticky=W)
-        ttk.Label(parent, textvariable=status_var).grid(row=row, column=1, sticky=E)
+        self.log_is_visible.set(True)
+        self.toggle_log()
+        self.log(f"Scanning folder: {folder_path}")
+
+        sound_files = ["engine.wav", "idle.wav", "low.wav", "high.wav"]
+        vars_map = {
+            "engine.wav": self.engine_wav_var, "idle.wav": self.idle_wav_var,
+            "low.wav": self.low_wav_var, "high.wav": self.high_wav_var
+        }
+
+        found_any = False
+        for filename in sound_files:
+            full_path = os.path.join(folder_path, filename)
+            if os.path.exists(full_path):
+                vars_map[filename].set(full_path)
+                self.log(f"  - Found: {filename}")
+                found_any = True
+        
+        if not found_any:
+            self.log("Warning: No required .wav files found in the selected folder.")
+        
+        self.update_all_statuses()
+        self.log("...Scan complete.")
+
+    def update_all_statuses(self):
+        self.engine_status_var.set("✔️" if self.engine_wav_var.get() else "❌")
+        self.idle_status_var.set("✔️" if self.idle_wav_var.get() else "❌")
+        self.low_status_var.set("✔️" if self.low_wav_var.get() else "❌")
+        self.high_status_var.set("✔️" if self.high_wav_var.get() else "❌")
+
+    def create_sound_input_row(self, parent, label_text, string_var, status_var):
+        row_frame = ttk.Frame(parent)
+        row_frame.pack(fill=X, pady=2)
+        row_frame.grid_columnconfigure(1, weight=1)
+
+        ttk.Label(row_frame, text=label_text, width=7).grid(row=0, column=0, sticky=tk.W)
+        
+        entry = ttk.Entry(row_frame, textvariable=string_var, state="readonly")
+        entry.grid(row=0, column=1, sticky='ew', padx=5)
+
+        ttk.Label(row_frame, textvariable=status_var, width=2).grid(row=0, column=2, padx=5)
+        
+        button = ttk.Button(row_frame, text="...", bootstyle="outline", width=4, 
+                            command=lambda: self.browse_for_file(string_var, [("WAV", "*.wav")]))
+        button.grid(row=0, column=3)
 
     def _get_placeholder_image(self, size, text):
         if self.placeholder_image: return self.placeholder_image
@@ -164,8 +182,8 @@ class SoundCreatorFrame(ttk.Frame):
         for widget in self.bikes_container_frame.winfo_children(): widget.destroy()
         button_bar = ttk.Frame(self.bikes_container_frame)
         button_bar.pack(fill=X, pady=(5, 10))
-        ttk.Button(button_bar, text="Select All", command=self.select_all_bikes, bootstyle="outline").pack(side=LEFT, expand=True, padx=(0,5))
-        ttk.Button(button_bar, text="Deselect All", command=self.deselect_all_bikes, bootstyle="outline").pack(side=LEFT, expand=True)
+        ttk.Button(button_bar, text="Select All", command=self.select_all_bikes, bootstyle="outline").pack(side=tk.LEFT, expand=True, padx=(0,5))
+        ttk.Button(button_bar, text="Deselect All", command=self.deselect_all_bikes, bootstyle="outline").pack(side=tk.LEFT, expand=True)
         bikes_scrolled_frame = ScrolledFrame(self.bikes_container_frame, autohide=True)
         bikes_scrolled_frame.pack(fill=BOTH, expand=True)
         bike_list = ["Y250", "Y450", "E", "GRF250", "GRF450", "RM250", "RM450", "KW250", "KW450", "KTSX250", "KTSX450", "KTST250", "T250", "T450"]
@@ -196,9 +214,9 @@ class SoundCreatorFrame(ttk.Frame):
 
     def create_file_input_row(self, parent, label_text, string_var, row_num, file_types=[("WAV", "*.wav")]):
         parent.grid_columnconfigure(1, weight=1)
-        ttk.Label(parent, text=label_text).grid(row=row_num, column=0, sticky=W, pady=3)
+        ttk.Label(parent, text=label_text).grid(row=row_num, column=0, sticky=tk.W, pady=3)
         entry = ttk.Entry(parent, textvariable=string_var, state="readonly")
-        entry.grid(row=row_num, column=1, sticky=EW, padx=5)
+        entry.grid(row=row_num, column=1, sticky='ew', padx=5)
         button = ttk.Button(parent, text="...", bootstyle="outline", width=4, command=lambda: self.browse_for_file(string_var, file_types))
         button.grid(row=row_num, column=2)
 
@@ -207,6 +225,7 @@ class SoundCreatorFrame(ttk.Frame):
         if file_path:
             string_var.set(file_path)
             self.log(f"Selected: {os.path.basename(file_path)}")
+            self.update_all_statuses()
 
     def update_output_options(self, mod_data):
         lib_paths = list(mod_data.keys())
@@ -233,11 +252,11 @@ class SoundCreatorFrame(ttk.Frame):
 
     def _on_output_mode_change(self):
         if self.output_mode_var.get() == "new":
-            self.new_mod_name_entry.grid(row=3, column=1, sticky=EW, padx=5)
+            self.new_mod_name_entry.grid(row=3, column=1, sticky='ew', padx=5)
             self.existing_mod_selector.grid_forget()
         else:
             self.new_mod_name_entry.grid_forget()
-            self.existing_mod_selector.grid(row=3, column=1, sticky=EW, padx=5)
+            self.existing_mod_selector.grid(row=3, column=1, sticky='ew', padx=5)
 
     def create_mod_package(self):
         self.log_is_visible.set(True)
@@ -256,7 +275,7 @@ class SoundCreatorFrame(ttk.Frame):
         self.log_output_text.see(tk.END)
         self.log_output_text.text.config(state='disabled')
 
-class App(TkinterDnD.Tk):
+class App(tk.Tk): # Changed from TkinterDnD.Tk to tk.Tk
     def __init__(self, themename="superhero"):
         super().__init__()
         self.style = ttk.Style(theme=themename)
