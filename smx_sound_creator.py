@@ -39,23 +39,23 @@ class SoundCreatorFrame(ttk.Frame):
         self.output_mode_var = tk.StringVar(value="new")
         self.bike_vars = {}
         self.bike_images = {} # To prevent garbage collection
+        
+        # --- NEW: A direct reference to the bike container for robust updates ---
+        self.bikes_container_frame = None
 
         self.build_ui()
         
     def build_ui(self):
-        # --- Main Layout: Paned Window (Top Controls, Bottom Log) ---
         main_pane = ttk.PanedWindow(self, orient=VERTICAL)
         main_pane.pack(fill=BOTH, expand=True, padx=15, pady=15)
 
-        # --- TOP PANE: All user controls ---
         top_frame = ttk.Frame(main_pane)
         main_pane.add(top_frame, weight=4)
         top_frame.grid_columnconfigure(1, weight=1)
-        top_frame.grid_rowconfigure(2, weight=1)
+        top_frame.grid_rowconfigure(0, weight=1)
 
-        # --- LEFT COLUMN: Details, Files, Output ---
         left_col_frame = ttk.Frame(top_frame)
-        left_col_frame.grid(row=0, column=0, rowspan=3, sticky='nsew', padx=(0, 15))
+        left_col_frame.grid(row=0, column=0, sticky='nsew', padx=(0, 15))
 
         details_frame = ttk.Labelframe(left_col_frame, text="1. Mod Details", padding=15)
         details_frame.pack(fill=X, pady=(0, 10))
@@ -86,11 +86,8 @@ class SoundCreatorFrame(ttk.Frame):
         ttk.Separator(output_frame).grid(row=1, column=0, columnspan=2, sticky='ew', pady=10)
         mode_frame = ttk.Frame(output_frame)
         mode_frame.grid(row=2, column=0, columnspan=2, sticky='w')
-
-        # --- FIX IS ON THESE TWO LINES: changed 'cmd' to 'command' ---
         ttk.Radiobutton(mode_frame, text="New Mod", var=self.output_mode_var, value="new", command=self._on_output_mode_change).pack(side=LEFT)
         ttk.Radiobutton(mode_frame, text="Existing Mod", var=self.output_mode_var, value="existing", command=self._on_output_mode_change).pack(side=LEFT, padx=10)
-        
         ttk.Label(output_frame, text="Mod Name:").grid(row=3, column=0, sticky=W, pady=2)
         self.new_mod_name_entry = ttk.Entry(output_frame)
         self.new_mod_name_entry.grid(row=3, column=1, sticky=EW, padx=5)
@@ -100,12 +97,11 @@ class SoundCreatorFrame(ttk.Frame):
         self.create_button = ttk.Button(left_col_frame, text="Create Sound Mod Package", command=self.create_mod_package)
         self.create_button.pack(fill=X, pady=10, ipady=10)
 
-        # --- RIGHT COLUMN: Bike Selection ---
-        bikes_container = ttk.Labelframe(top_frame, text="4. Bikes to Include", padding=15)
-        bikes_container.grid(row=0, column=1, rowspan=3, sticky='nsew')
-        self.populate_bikes_frame(bikes_container)
+        # --- Store the reference to the bikes container ---
+        self.bikes_container_frame = ttk.Labelframe(top_frame, text="4. Bikes to Include", padding=15)
+        self.bikes_container_frame.grid(row=0, column=1, sticky='nsew')
+        self.populate_bikes_frame()
 
-        # --- BOTTOM PANE: Log Output ---
         log_frame = ttk.Frame(main_pane)
         main_pane.add(log_frame, weight=1)
         log_header = ttk.Frame(log_frame)
@@ -114,24 +110,26 @@ class SoundCreatorFrame(ttk.Frame):
         self.log_output_text = ScrolledText(log_frame, wrap=tk.WORD, autohide=True, height=4)
         self.log_output_text.pack(expand=True, fill=BOTH)
 
-    def populate_bikes_frame(self, parent):
-        bikes_scrolled_frame = ScrolledFrame(parent, autohide=True)
+    def populate_bikes_frame(self):
+        # Clear any existing widgets first
+        for widget in self.bikes_container_frame.winfo_children():
+            widget.destroy()
+
+        bikes_scrolled_frame = ScrolledFrame(self.bikes_container_frame, autohide=True)
         bikes_scrolled_frame.pack(fill=BOTH, expand=True)
 
         bike_list = ["Y250", "Y450", "E", "GRF250", "GRF450", "RM250", "RM450", "KW250", 
                      "KW450", "KTSX250", "KTSX450", "KTST250", "T250", "T450"]
         
         thumb_path = self.controller.get_thumbnail_path()
-        cols = 4 # Number of columns for the grid
+        cols = 4
 
         for i, bike_name in enumerate(bike_list):
             var = tk.BooleanVar()
             self.bike_vars[bike_name] = var
-            
             item_frame = ttk.Frame(bikes_scrolled_frame)
             item_frame.grid(row=i//cols, column=i%cols, padx=10, pady=5, sticky='w')
             
-            # --- Thumbnail ---
             img_path = os.path.join(thumb_path, f"{bike_name}.png") if thumb_path else ""
             if os.path.exists(img_path):
                 try:
@@ -197,7 +195,6 @@ class SoundCreatorFrame(ttk.Frame):
         if not selected_bikes:
             self.log("ERROR: No bikes were selected!")
             return
-            
         self.log(f"Bikes to include: {', '.join(selected_bikes)}")
         self.log("ERROR: Packaging logic has not been implemented yet.")
 
@@ -222,22 +219,30 @@ class App(ttk.Window):
         self.thumbnail_folder_path = ""
         self.mod_data = {}
         self.load_config()
+        
+        # --- THE FIX: Use grid for the main window layout ---
+        self.grid_rowconfigure(1, weight=1)
+        self.grid_columnconfigure(0, weight=1)
 
         self.nav_frame = ttk.Frame(self)
-        self.nav_frame.pack(side="top", fill="x", padx=1, pady=1)
+        self.nav_frame.grid(row=0, column=0, sticky="ew", padx=1, pady=1)
+        
+        # --- NEW: Configure nav_frame's columns to expand equally ---
+        self.nav_frame.grid_columnconfigure((0, 1), weight=1)
+
         self.nav_buttons = {}
         self.core_frames = ["Sound Creator", "Settings"]
-        for name in self.core_frames:
+        for i, name in enumerate(self.core_frames):
             btn = ttk.Button(self.nav_frame, text=name, command=lambda n=name: self.show_frame(n), bootstyle="secondary", padding=(0, 10))
-            btn.pack(side="left", fill="x", expand=True, padx=(0, 1))
+            btn.grid(row=0, column=i, sticky="ew", padx=(0, 1))
             self.nav_buttons[name] = btn
 
         self.container = ttk.Frame(self)
-        self.container.pack(side="top", fill="both", expand=True)
-        self.container.grid_row_configure(0, weight=1)
+        self.container.grid(row=1, column=0, sticky="nsew")
+        self.container.grid_rowconfigure(0, weight=1)
         self.container.grid_columnconfigure(0, weight=1)
+        
         self.frames = {}
-
         for F in (SoundCreatorFrame, SettingsFrame):
             frame = F(self.container, self)
             self.frames[F.name] = frame
@@ -268,8 +273,10 @@ class App(ttk.Window):
 
     def set_thumbnail_path(self, new_path):
         self.thumbnail_folder_path = new_path
-        # Re-populate the bikes frame to show new images
-        self.frames["Sound Creator"].populate_bikes_frame(self.frames["Sound Creator"].winfo_children()[0].winfo_children()[0].winfo_children()[1])
+        # --- ROBUST FIX: Use the direct reference to re-populate ---
+        sound_creator_frame = self.frames.get("Sound Creator")
+        if sound_creator_frame:
+            sound_creator_frame.populate_bikes_frame()
 
     def get_library_paths(self): return self.library_paths
     def get_thumbnail_path(self): return self.thumbnail_folder_path
@@ -284,7 +291,10 @@ class App(ttk.Window):
                 for mod_folder in os.listdir(lib_path):
                     if os.path.isdir(os.path.join(lib_path, mod_folder)):
                         self.mod_data[lib_path][mod_folder] = []
-        self.frames["Sound Creator"].update_output_options(self.mod_data)
+        
+        sound_creator_frame = self.frames.get("Sound Creator")
+        if sound_creator_frame:
+            sound_creator_frame.update_output_options(self.mod_data)
 
     def show_frame(self, page_name):
         if page_name in self.frames:
