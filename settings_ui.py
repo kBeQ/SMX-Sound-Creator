@@ -19,6 +19,7 @@ class SettingsFrame(ttk.Frame):
         scrollable_frame = ScrolledFrame(self, autohide=True, padding=20)
         scrollable_frame.pack(fill=BOTH, expand=True)
 
+        # --- Library Manager Section ---
         lib_frame = ttk.Labelframe(scrollable_frame, text="Local Mod Libraries (Categories)", padding=15)
         lib_frame.pack(fill='x', expand=True, pady=(0, 20))
         ttk.Label(lib_frame, text="Add folders that represent your top-level categories (e.g., '4-Strokes').").pack(anchor='w')
@@ -29,17 +30,30 @@ class SettingsFrame(ttk.Frame):
         self.library_listbox = tk.Listbox(list_frame, height=5)
         self.library_listbox.pack(side='left', fill='x', expand=True)
 
-        # --- UPDATED: Get paths from the SoundCreatorFrame ---
-        sound_creator_frame = self.controller.frames.get("Sound Creator")
-        if sound_creator_frame:
-            for path in sound_creator_frame.library_paths:
-                self.library_listbox.insert(tk.END, path)
+        # Populate the listbox with currently saved paths
+        for path in self.controller.get_library_paths():
+            self.library_listbox.insert(tk.END, path)
             
         btn_frame = ttk.Frame(lib_frame)
         btn_frame.pack(fill='x', pady=(5,0))
         ttk.Button(btn_frame, text="Add Folder...", command=self.add_library_folder, bootstyle="outline").pack(side='left')
         ttk.Button(btn_frame, text="Remove Selected", command=self.remove_library_folder, bootstyle="outline-danger").pack(side='left', padx=5)
 
+        # --- NEW: Bike Thumbnails Section ---
+        thumb_frame = ttk.Labelframe(scrollable_frame, text="Asset Configuration", padding=15)
+        thumb_frame.pack(fill='x', expand=True, pady=(0, 20))
+        thumb_frame.grid_columnconfigure(1, weight=1)
+        
+        ttk.Label(thumb_frame, text="Bike Thumbnails Folder:").grid(row=0, column=0, sticky=tk.W, pady=2)
+        
+        self.thumbnail_path_var = tk.StringVar(value=self.controller.get_thumbnail_path())
+        path_entry = ttk.Entry(thumb_frame, textvariable=self.thumbnail_path_var, state="readonly")
+        path_entry.grid(row=0, column=1, sticky=tk.EW, padx=5)
+        
+        browse_button = ttk.Button(thumb_frame, text="Browse...", command=self.browse_for_thumbnail_folder, bootstyle="outline")
+        browse_button.grid(row=0, column=2)
+
+        # --- Appearance Section ---
         theme_frame = ttk.Labelframe(scrollable_frame, text="Appearance", padding=15)
         theme_frame.pack(fill='x', expand=True)
         ttk.Label(theme_frame, text="Theme:").pack(side='left', padx=(0, 10))
@@ -73,7 +87,10 @@ class SettingsFrame(ttk.Frame):
 
     def save_library_changes(self):
         new_paths = self.library_listbox.get(0, tk.END)
-        # --- UPDATED: Call the function on the SoundCreatorFrame instance ---
-        sound_creator_frame = self.controller.frames.get("Sound Creator")
-        if sound_creator_frame:
-            sound_creator_frame.update_library_paths(list(new_paths))
+        self.controller.update_library_paths(list(new_paths))
+
+    def browse_for_thumbnail_folder(self):
+        folder = filedialog.askdirectory(title="Select Folder Containing Bike Thumbnails (e.g., Y250.png)")
+        if folder:
+            self.thumbnail_path_var.set(folder)
+            self.controller.set_thumbnail_path(folder)
