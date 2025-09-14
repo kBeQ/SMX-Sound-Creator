@@ -8,7 +8,11 @@ from PIL import Image, ImageTk, ImageDraw, ImageFont
 import os
 import sys
 import json
-# No longer need tkinterdnd2
+import platform
+
+# Import winsound for audio playback on Windows
+if platform.system() == "Windows":
+    import winsound
 
 from settings_ui import SettingsFrame
 
@@ -63,13 +67,28 @@ class SoundCreatorFrame(ttk.Frame):
         sounds_frame = ttk.Labelframe(left_scrolled_frame, text="1. Sound Files (.wav)", padding=15)
         sounds_frame.pack(fill=X, pady=(0, 10))
 
-        # --- THE FIX IS HERE: Both folder selection AND individual file selection ---
+        # --- Top buttons for folder selection and stopping sound ---
+        top_button_frame = ttk.Frame(sounds_frame)
+        top_button_frame.pack(fill=X, pady=(0, 10))
+        top_button_frame.grid_columnconfigure(0, weight=1)
+
         ttk.Button(
-            sounds_frame, 
+            top_button_frame, 
             text="Select Folder with Sounds...", 
             command=self.browse_for_sound_folder, 
             bootstyle="primary"
-        ).pack(fill=X, ipady=5, pady=(0, 10))
+        ).grid(row=0, column=0, sticky='ew', ipady=5, pady=(0, 10))
+
+        stop_button = ttk.Button(
+            top_button_frame,
+            text="Stop Sound",
+            command=self._stop_all_sounds,
+            bootstyle="danger-outline"
+        )
+        stop_button.grid(row=0, column=1, sticky='nsew', ipady=5, padx=(10, 0), pady=(0, 10))
+        
+        if platform.system() != "Windows":
+            stop_button.config(state=tk.DISABLED)
 
         ttk.Separator(sounds_frame).pack(fill=X, pady=5)
 
@@ -117,6 +136,36 @@ class SoundCreatorFrame(ttk.Frame):
     def toggle_log(self):
         if self.log_is_visible.get(): self.log_output_text.pack(fill=BOTH, expand=True, pady=(5,0))
         else: self.log_output_text.pack_forget()
+
+    def _play_sound(self, sound_var):
+        if platform.system() != "Windows":
+            self.log("ERROR: Sound playback is only supported on Windows.")
+            messagebox.showerror("Unsupported OS", "Sound playback is currently only available on Windows.")
+            return
+
+        sound_path = sound_var.get()
+        if not sound_path:
+            self.log("Playback failed: No sound file selected for this slot.")
+            return
+        if not os.path.exists(sound_path):
+            self.log(f"Playback failed: File not found at '{sound_path}'")
+            return
+
+        try:
+            self.log(f"Playing: {os.path.basename(sound_path)}")
+            winsound.PlaySound(sound_path, winsound.SND_ASYNC | winsound.SND_PURGE)
+        except Exception as e:
+            self.log(f"ERROR: Could not play sound. {e}")
+            messagebox.showerror("Playback Error", f"Could not play the sound file.\n\nError: {e}")
+
+    def _stop_all_sounds(self):
+        if platform.system() != "Windows":
+            return
+        try:
+            winsound.PlaySound(None, winsound.SND_PURGE)
+            self.log("Sound playback stopped.")
+        except Exception as e:
+            self.log(f"ERROR: Could not stop sound. {e}")
 
     def browse_for_sound_folder(self):
         folder_path = filedialog.askdirectory(title="Select Folder Containing Sound Files")
@@ -167,6 +216,13 @@ class SoundCreatorFrame(ttk.Frame):
         button = ttk.Button(row_frame, text="...", bootstyle="outline", width=4, 
                             command=lambda: self.browse_for_file(string_var, [("WAV", "*.wav")]))
         button.grid(row=0, column=3)
+
+        play_button = ttk.Button(row_frame, text="▶", bootstyle="success-outline", width=4,
+                                 command=lambda: self._play_sound(string_var))
+        play_button.grid(row=0, column=4, padx=(5, 0))
+
+        if platform.system() != "Windows":
+            play_button.config(state=tk.DISABLED)
 
     def _get_placeholder_image(self, size, text):
         if self.placeholder_image: return self.placeholder_image
@@ -275,7 +331,7 @@ class SoundCreatorFrame(ttk.Frame):
         self.log_output_text.see(tk.END)
         self.log_output_text.text.config(state='disabled')
 
-class App(tk.Tk): # Changed from TkinterDnD.Tk to tk.Tk
+class App(tk.Tk):
     def __init__(self, themename="superhero"):
         super().__init__()
         self.style = ttk.Style(theme=themename)
@@ -351,6 +407,7 @@ class App(tk.Tk): # Changed from TkinterDnD.Tk to tk.Tk
             for name, btn in self.nav_buttons.items():
                 btn.config(bootstyle="primary" if name == page_name else "secondary")
     def on_closing(self):
+        self._stop_all_sounds()
         self.save_config()
         self.destroy()
 
