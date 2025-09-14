@@ -86,8 +86,11 @@ class SoundCreatorFrame(ttk.Frame):
         ttk.Separator(output_frame).grid(row=1, column=0, columnspan=2, sticky='ew', pady=10)
         mode_frame = ttk.Frame(output_frame)
         mode_frame.grid(row=2, column=0, columnspan=2, sticky='w')
-        ttk.Radiobutton(mode_frame, text="New Mod", var=self.output_mode_var, value="new", cmd=self._on_output_mode_change).pack(side=LEFT)
-        ttk.Radiobutton(mode_frame, text="Existing Mod", var=self.output_mode_var, value="existing", cmd=self._on_output_mode_change).pack(side=LEFT, padx=10)
+
+        # --- FIX IS ON THESE TWO LINES: changed 'cmd' to 'command' ---
+        ttk.Radiobutton(mode_frame, text="New Mod", var=self.output_mode_var, value="new", command=self._on_output_mode_change).pack(side=LEFT)
+        ttk.Radiobutton(mode_frame, text="Existing Mod", var=self.output_mode_var, value="existing", command=self._on_output_mode_change).pack(side=LEFT, padx=10)
+        
         ttk.Label(output_frame, text="Mod Name:").grid(row=3, column=0, sticky=W, pady=2)
         self.new_mod_name_entry = ttk.Entry(output_frame)
         self.new_mod_name_entry.grid(row=3, column=1, sticky=EW, padx=5)
@@ -231,7 +234,7 @@ class App(ttk.Window):
 
         self.container = ttk.Frame(self)
         self.container.pack(side="top", fill="both", expand=True)
-        self.container.grid_rowconfigure(0, weight=1)
+        self.container.grid_row_configure(0, weight=1)
         self.container.grid_columnconfigure(0, weight=1)
         self.frames = {}
 
@@ -266,7 +269,7 @@ class App(ttk.Window):
     def set_thumbnail_path(self, new_path):
         self.thumbnail_folder_path = new_path
         # Re-populate the bikes frame to show new images
-        self.frames["Sound Creator"].populate_bikes_frame(self.frames["Sound Creator"].winfo_children()[0].winfo_children()[1])
+        self.frames["Sound Creator"].populate_bikes_frame(self.frames["Sound Creator"].winfo_children()[0].winfo_children()[0].winfo_children()[1])
 
     def get_library_paths(self): return self.library_paths
     def get_thumbnail_path(self): return self.thumbnail_folder_path
