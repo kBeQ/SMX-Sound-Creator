@@ -19,6 +19,25 @@ from settings_ui import SettingsFrame
 APP_VERSION = "1.0.0"
 CONFIG_FILE = "config.json"
 
+# --- THE FIX IS HERE: Added a data structure for bike names and IDs ---
+BIKE_DATA = [
+    ("YAMI YZ-F 250", "Y250"),
+    ("YAMI YZ-F 450", "Y450"),
+    ("YAMI Electric", "E"),
+    ("HINDA CR250", "GRF250"),
+    ("HINDA CR450", "GRF450"),
+    ("SUCAKI RM 250", "RM250"),
+    ("SUCAKI RM 450", "RM450"),
+    ("Kawazavi KX 250", "KW250"),
+    ("Kawazavi KX 450", "KW450"),
+    ("KMA KTSX 250", "KTSX250"),
+    ("KMA KTSX 450", "KTSX450"),
+    ("KMA KTST 250", "KTST250"),
+    ("TF MF 250", "T250"),
+    ("TF MF 450", "T450")
+]
+
+
 def get_resource_path(filename):
     if getattr(sys, "frozen", False): base_dir = sys._MEIPASS
     else: base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -67,7 +86,6 @@ class SoundCreatorFrame(ttk.Frame):
         sounds_frame = ttk.Labelframe(left_scrolled_frame, text="1. Sound Files (.wav)", padding=15)
         sounds_frame.pack(fill=X, pady=(0, 10))
 
-        # --- Top buttons for folder selection and stopping sound ---
         top_button_frame = ttk.Frame(sounds_frame)
         top_button_frame.pack(fill=X, pady=(0, 10))
         top_button_frame.grid_columnconfigure(0, weight=1)
@@ -242,23 +260,28 @@ class SoundCreatorFrame(ttk.Frame):
         ttk.Button(button_bar, text="Deselect All", command=self.deselect_all_bikes, bootstyle="outline").pack(side=tk.LEFT, expand=True)
         bikes_scrolled_frame = ScrolledFrame(self.bikes_container_frame, autohide=True)
         bikes_scrolled_frame.pack(fill=BOTH, expand=True)
-        bike_list = ["Y250", "Y450", "E", "GRF250", "GRF450", "RM250", "RM450", "KW250", "KW450", "KTSX250", "KTSX450", "KTST250", "T250", "T450"]
+        
         thumb_path = self.controller.get_thumbnail_path()
         cols = 5
-        for i, bike_name in enumerate(bike_list):
+        # --- THE FIX IS HERE: Iterate through BIKE_DATA to get both name and ID ---
+        for i, (bike_name, bike_id) in enumerate(BIKE_DATA):
             var = tk.BooleanVar()
-            self.bike_vars[bike_name] = var
-            img_path = os.path.join(thumb_path, f"{bike_name}.png") if thumb_path else ""
+            self.bike_vars[bike_id] = var # Use the ID as the key
+            img_path = os.path.join(thumb_path, f"{bike_id}.png") if thumb_path else ""
             image_to_display = None
             if os.path.exists(img_path):
                 try:
                     img = Image.open(img_path)
                     img.thumbnail((96, 96), Image.Resampling.LANCZOS)
-                    self.bike_images[bike_name] = ImageTk.PhotoImage(img)
-                    image_to_display = self.bike_images[bike_name]
+                    self.bike_images[bike_id] = ImageTk.PhotoImage(img)
+                    image_to_display = self.bike_images[bike_id]
                 except Exception: image_to_display = self._get_placeholder_image((80, 50), "Error")
             else: image_to_display = self._get_placeholder_image((80, 50), "No Preview")
-            cb = ttk.Checkbutton(bikes_scrolled_frame, image=image_to_display, text=bike_name, variable=var, compound=tk.TOP, bootstyle="primary-toolbutton")
+            
+            # Format the text to show the full name and the ID
+            button_text = f"{bike_name}\n({bike_id})"
+            
+            cb = ttk.Checkbutton(bikes_scrolled_frame, image=image_to_display, text=button_text, variable=var, compound=tk.TOP, bootstyle="primary-toolbutton")
             cb.grid(row=i//cols, column=i%cols, padx=5, pady=5)
             bikes_scrolled_frame.grid_columnconfigure(i%cols, weight=1)
 
@@ -410,6 +433,13 @@ class App(tk.Tk):
         self._stop_all_sounds()
         self.save_config()
         self.destroy()
+
+    def _stop_all_sounds(self):
+        if platform.system() == "Windows":
+            try:
+                winsound.PlaySound(None, winsound.SND_PURGE)
+            except Exception:
+                pass # Fail silently on exit
 
 if __name__ == "__main__":
     app = App()
