@@ -24,7 +24,9 @@ class SoundCreatorFrame(ttk.Frame):
         self.build_ui()
 
     def build_ui(self):
-        main_pane = ttk.PanedWindow(self, orient=HORIZONTAL, sashwidth=10)
+        # --- THE FIX IS ON THIS LINE ---
+        # Removed the invalid 'sashwidth=10' option
+        main_pane = ttk.PanedWindow(self, orient=HORIZONTAL)
         main_pane.pack(fill=BOTH, expand=True, padx=15, pady=15)
 
         # --- LEFT PANE: Configuration ---
