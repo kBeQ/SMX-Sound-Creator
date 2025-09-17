@@ -2,5 +2,110 @@
     "library_paths": [
         "D:/Gaming - D/D; Modding/SMX/_Main Mods Folder/Sounds"
     ],
-    "thumbnail_folder_path": "D:/Gaming - D/D; Modding/SMX/_Main Mods Folder/Bike_Thumbnails"
+    "thumbnail_folder_path": "D:/Gaming - D/D; Modding/SMX/_Main Mods Folder/Bike_Thumbnails",
+    "background_path": "",
+    "preview_elements": [
+        {
+            "id": "1d1b01e6-8c2e-4961-86eb-93bece2efbac",
+            "name": "Background",
+            "type": "background",
+            "visible": true,
+            "path": "C:/Users/5lett/Downloads/SoundLab.png",
+            "color": "#FFFFFF",
+            "rotation": 0,
+            "aspect_ratio": "stretch",
+            "pos_x": 960,
+            "pos_y": 540,
+            "scale": 1.0
+        },
+        {
+            "id": "d53484aa-9e1f-4124-a0de-586fd62153fc",
+            "name": "BikeID BG",
+            "type": "image",
+            "visible": true,
+            "path": "C:/Users/5lett/Downloads/SoundLabBikeIDPanel.png",
+            "pos_x": 960,
+            "pos_y": -180,
+            "scale": 0.5,
+            "rotation": 0,
+            "aspect_ratio": "fit"
+        },
+        {
+            "id": "7315dd58-ac2d-4964-8431-6a11640f34be",
+            "name": "Bike ID",
+            "type": "text",
+            "visible": true,
+            "dataSource": "Bike ID",
+            "staticText": "Hello",
+            "font_path": "arial.ttf",
+            "size": 50,
+            "color": "#00ffff",
+            "align": "center",
+            "pos_x": 960,
+            "pos_y": 40,
+            "outline_size": 2,
+            "outline_color": "#1eaca9",
+            "rotation": 0
+        },
+        {
+            "id": "6bd1af85-50c3-40a1-9529-fed8e991fe0f",
+            "name": "Author",
+            "type": "text",
+            "visible": true,
+            "dataSource": "Static Text",
+            "staticText": "kBeQ",
+            "font_path": "arial.ttf",
+            "size": 70,
+            "color": "#00ffff",
+            "align": "center",
+            "pos_x": 323,
+            "pos_y": 258,
+            "outline_size": 3,
+            "outline_color": "#056f7a",
+            "rotation": 348
+        },
+        {
+            "id": "cc29215a-ad8d-4896-b55a-5551f2288cbd",
+            "name": "Bike Image",
+            "type": "bike_image",
+            "visible": true,
+            "pos_x": 940,
+            "pos_y": 580,
+            "scale": 0.73,
+            "rotation": 0,
+            "aspect_ratio": "fit"
+        },
+        {
+            "id": "13c76de2-ac52-42de-9c3b-15bae711e15b",
+            "name": "ModName Panel",
+            "type": "image",
+            "visible": true,
+            "path": "C:/Users/5lett/Downloads/SoundLabPanel.png",
+            "pos_x": 960,
+            "pos_y": 540,
+            "scale": 1.0,
+            "rotation": 0,
+            "aspect_ratio": "stretch"
+        },
+        {
+            "id": "3cd13b8c-d627-4f32-9aa6-3e6699897fcf",
+            "name": "ModName Text",
+            "type": "text",
+            "visible": true,
+            "dataSource": "Mod Name",
+            "staticText": "Hello",
+            "font_path": "C:/Users/5lett/Dev/Fonts\\UnzzippedFonts\\public-pixel\\PublicPixel.ttf",
+            "size": 140,
+            "color": "#00ffff",
+            "align": "center",
+            "pos_x": 960,
+            "pos_y": 940,
+            "outline_size": 2,
+            "outline_color": "#21b8c5",
+            "rotation": 0
+        }
+    ],
+    "font_folder_paths": [
+        "C:/Users/5lett/Dev/Fonts"
+    ]
 }
