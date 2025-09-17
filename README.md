@@ -1,6 +1,6 @@
 # SMX Sound Creator
 
-![SMX Sound Creator](assets/Ico_smx_sound_creator.png)
+![SMX Sound Creator](assets/smx_sound_creator.png)
 
 A powerful and user-friendly tool designed to streamline the creation of custom sound mods for the game SMX. This application simplifies the entire workflow, from selecting your sound files to packaging a game-ready mod with a fully customized, high-quality preview image.
 
