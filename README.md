@@ -31,6 +31,9 @@ Before you begin, it's recommended to visit the **Settings** tab to configure yo
 
 *   **Mod Libraries:** Add the top-level folders where you store your sound mods (e.g., `...\MX Bikes\mods\sounds\4-Strokes`).
 *   **Asset Configuration:** Set the folder path for your bike thumbnail images.
+
+![Bike thumbnail Folder](docs/BikeThumbnailFolder.png)
+
 *   **Font Configuration:** Add any folders on your computer that contain `.ttf` or `.otf` font files to make them available in the preview editor.
 
 ![Settings Tab](docs/SettingsTab.png)
