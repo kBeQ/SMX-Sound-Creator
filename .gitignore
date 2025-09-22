@@ -1,6 +1,9 @@
 # Virtual Environment
 venv/
 
+# User-Specific Application Files
+config.json
+
 # Build artifacts
 build/
 dist/
