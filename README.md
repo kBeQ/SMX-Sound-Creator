@@ -120,9 +120,11 @@ By pointing the Sound Creator's output to your Mod Manager's library, you can cr
 
 This powerful combination turns creating and testing sound mods into a rapid, seamless process.
 
-[**Get the SMX Mod Manager Here**](https://github.com/kBeQ/SMX-Mod-Manager)
-
-[![SMX Mod Manager Icon](assets/Ico_smx_mod_manager.png)](https://github.com/kBeQ/SMX-Mod-Manager)
+<a href="https://github.com/kBeQ/SMX-Mod-Manager" style="text-decoration: none;">
+  <img src="assets/Ico_smx_mod_manager.png" alt="SMX Mod Manager Icon" width="16" height="16" style="vertical-align: middle;">
+  &nbsp;
+  <strong>Get the SMX Mod Manager Here</strong>
+</a>
 
 ## Technologies Used
 
